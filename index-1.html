@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cacheide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://github.com" crossorigin />
+  <link rel="dns-prefetch" href="https://github.com" />
+  <link rel="preconnect" href="https://x.com" crossorigin />
+  <link rel="dns-prefetch" href="https://x.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tokens ── */
+    :root, [data-theme="dark"] {
+      --bg:          #0F0F11;
+      --surface:     #1C1C21;
+      --surf-hover:  #21211F;
+      --border:      #2A2A30;
+      --icon-bg:     #2A2A30;
+      --icon-hover:  #333330;
+      --text:        #E8E6E1;
+      --muted:       #7A7880;
+      --footer:      #3A3840;
+      --input-bg:    #0F0F11;
+      --accent:      #F5A623;
+      --tog-bg:      #2A2A30;
+      --tog-knob:    #E8E6E1;
+    }
+    [data-theme="light"] {
+      --bg:          #F5F4F0;
+      --surface:     #FFFFFF;
+      --surf-hover:  #FBF9F6;
+      --border:      #E2DFD8;
+      --icon-bg:     #ECEAE4;
+      --icon-hover:  #E0DDD6;
+      --text:        #1A1A1E;
+      --muted:       #8A8790;
+      --footer:      #C0BDB6;
+      --input-bg:    #F5F4F0;
+      --accent:      #D4880A;
+      --tog-bg:      #E2DFD8;
+      --tog-knob:    #1A1A1E;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 3rem 1rem;
+      transition: background 0.3s ease, color 0.3s ease;
+      overflow-x: hidden;
+    }
+
+    /* ── Intro overlay ── */
+    #overlay {
+      position: fixed; inset: 0; z-index: 999;
+      background: #0F0F11;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1.25rem;
+      animation: overlayExit 0.45s cubic-bezier(0.55,0,1,0.45) 1.4s both;
+      pointer-events: none;
+    }
+    #overlay::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent 0px, transparent 3px,
+        rgba(245,166,35,0.04) 3px, rgba(245,166,35,0.04) 4px
+      );
+      animation: scan 0.35s linear infinite;
+    }
+    @keyframes scan       { to { background-position: 0 8px; } }
+    @keyframes overlayExit {
+      0%   { opacity: 1; clip-path: inset(0 0 0 0); }
+      100% { opacity: 0; clip-path: inset(0 0 100% 0); }
+    }
+
+    .o-ring {
+      position: relative;
+      width: 88px; height: 88px; border-radius: 50%;
+      border: 1.5px solid rgba(245,166,35,0.18);
+      animation: ringIn 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes ringIn {
+      from { transform: scale(0.3); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .o-ring::before {
+      content: '';
+      position: absolute; inset: -2px; border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: #F5A623;
+      border-right-color: rgba(245,166,35,0.35);
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .o-ring::after {
+      content: '';
+      position: absolute; top: 50%; left: 50%;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #F5A623;
+      box-shadow: 0 0 10px 3px rgba(245,166,35,0.55);
+      transform: translate(-50%,-50%) scale(0);
+      animation: dotIn 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.25s both;
+    }
+    @keyframes dotIn {
+      to { transform: translate(-50%,-50%) scale(1); }
+    }
+
+    .o-text {
+      font-family: 'Space Grotesk', monospace;
+      font-size: 0.65rem; letter-spacing: 0.22em;
+      color: rgba(245,166,35,0.55);
+      animation: fadeIn 0.3s ease 0.15s both;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ── Theme toggle ── */
+    .theme-btn {
+      position: fixed; top: 1rem; right: 1rem; z-index: 100;
+      background: var(--tog-bg); border: 1px solid var(--border);
+      border-radius: 999px; width: 52px; height: 28px;
+      cursor: pointer; display: flex; align-items: center; padding: 3px;
+      transition: background 0.3s, border-color 0.3s;
+      animation: fadeIn 0.4s ease 2s both;
+    }
+    .knob {
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--tog-knob);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      transition: transform 0.3s ease, background 0.3s;
+    }
+    [data-theme="light"] .knob { transform: translateX(24px); }
+
+    /* ── Container ── */
+    .container {
+      width: 100%; max-width: 380px;
+      animation: zoomIn 0.6s cubic-bezier(0.16,1,0.3,1) 1.45s both;
+    }
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.9) translateY(12px); filter: blur(6px); }
+      to   { opacity: 1; transform: scale(1)   translateY(0);    filter: blur(0); }
+    }
+
+    /* ── Profile ── */
+    .profile { text-align: center; margin-bottom: 2.25rem; }
+
+    .avatar-ring {
+      display: inline-block;
+      background: conic-gradient(from 180deg, #F5A623, #FF6B6B, #845EF7, #F5A623);
+      padding: 2px; border-radius: 50%; margin-bottom: 1.1rem;
+      animation: fadeUp 0.5s ease 1.6s both;
+    }
+    .avatar-inner { background: var(--bg); border-radius: 50%; padding: 3px; transition: background 0.3s; }
+    .avatar-face  {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--icon-bg);
+      display: flex; align-items: center; justify-content: center; font-size: 1.75rem;
+      transition: background 0.3s;
+    }
+
+    .profile-name {
+      font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+      font-size: 1.5rem; color: var(--text); letter-spacing: -0.02em;
+      line-height: 1.2; margin-bottom: 0.5rem;
+      transition: color 0.3s;
+      animation: fadeUp 0.45s ease 1.65s both, glitch 0.38s steps(2,end) 1.85s both;
+    }
+    @keyframes glitch {
+      0%   { text-shadow: none; transform: none; }
+      25%  { text-shadow: -2px 0 #F5A623, 2px 0 #845EF7; transform: translateX(-2px); }
+      50%  { text-shadow:  2px 0 #FF6B6B, -2px 0 #F5A623; transform: translateX(2px); }
+      75%  { text-shadow: -1px 0 #845EF7; transform: translateX(-1px); }
+      100% { text-shadow: none; transform: none; }
+    }
+
+    .profile-bio {
+      font-size: 0.875rem; color: var(--muted); line-height: 1.6;
+      max-width: 260px; margin: 0 auto; transition: color 0.3s;
+      animation: fadeUp 0.45s ease 1.7s both;
+    }
+    .profile-divider {
+      width: 28px; height: 2px; background: var(--accent);
+      border-radius: 2px; margin: 1.1rem auto 0;
+      animation: fadeUp 0.45s ease 1.72s both;
+    }
+
+    /* ── Cards ── */
+    .links { display: flex; flex-direction: column; gap: 0.625rem; }
+
+    .link-card {
+      position: relative;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.125rem 1.25rem;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      color: var(--text); text-decoration: none; overflow: hidden;
+      transition: border-color 0.2s, background 0.2s, transform 0.18s;
+    }
+    .link-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--accent); border-radius: 12px 0 0 12px;
+      transform: scaleY(0); transition: transform 0.2s; transform-origin: center;
+    }
+    .link-card:hover { border-color: var(--accent); background: var(--surf-hover); transform: translateX(2px); }
+    .link-card:hover::before { transform: scaleY(1); }
+    .link-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .link-card:hover .card-icon { background: var(--icon-hover); }
+    .link-card:hover .arrow { opacity: 0.85; transform: translate(2px,-2px); }
+
+    .card-left  { display: flex; align-items: center; gap: 0.875rem; }
+    .card-icon  {
+      width: 38px; height: 38px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--icon-bg); flex-shrink: 0; transition: background 0.2s;
+    }
+    .card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 0.9rem; }
+    .card-sub   { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .arrow      { opacity: 0.35; flex-shrink: 0; transition: opacity 0.2s, transform 0.2s; }
+
+    [data-theme="light"] .icon-fill   { fill: #1A1A1E; }
+    [data-theme="light"] .icon-stroke { stroke: #1A1A1E; }
+
+    /* Card stagger */
+    .c1 { animation: fadeUp 0.45s ease 1.75s both; }
+    .c2 { animation: fadeUp 0.45s ease 1.85s both; }
+    .c3 { animation: fadeUp 0.45s ease 1.95s both; }
+
+    /* ── Email card ── */
+    .email-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      transition: border-color 0.2s, background 0.3s;
+      animation: fadeUp 0.45s ease 2.05s both;
+    }
+    .email-card:hover { border-color: var(--accent); }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center; margin-top: 2.5rem;
+      font-size: 0.7rem; color: var(--footer); letter-spacing: 0.04em;
+      transition: color 0.3s;
+      animation: fadeUp 0.45s ease 2.15s both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Intro overlay ── -->
+  <div id="overlay">
+    <div class="o-ring"></div>
+    <div class="o-text">INITIALIZING...</div>
+  </div>
+
+  <!-- ── Theme toggle ── -->
+  <button class="theme-btn" onclick="toggleTheme()" aria-label="Toggle theme">
+    <div class="knob" id="knob">🌙</div>
+  </button>
+
+  <!-- ── Main ── -->
+  <div class="container">
+
+    <div class="profile">
+      <div class="avatar-ring">
+        <div class="avatar-inner">
+          <div class="avatar-face">👩‍💻</div>
+        </div>
+      </div>
+      <h1 class="profile-name">Cacheide</h1>
+      <p class="profile-bio">Product designer &amp; indie maker. Building things I wish existed.</p>
+      <div class="profile-divider"></div>
+    </div>
+
+    <div class="links">
+
+      <!-- GitHub -->
+      <a href="https://github.com/cacheide" target="_blank" rel="noopener noreferrer" class="link-card c1">
+        <div class="card-left">
+          <div class="card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8E6E1" class="icon-fill">
+              <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.342-3.369-1.342-.454-1.155-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836a9.59 9.59 0 012.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.202 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">GitHub</div>
+            <div class="card-sub">Open source projects &amp; code</div>
+          </div>
+        </div>
+        <svg class="arrow icon-stroke" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8E6E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17L17 7M17 7H7M17 7v10"/>
+        </svg>
+      </a>
+
+      <!-- Twitter / X -->
+      <a href="https://x.com/CacheIde" target="_blank" rel="noopener noreferrer" class="link-card c2">
+        <div class="card-left">
+          <div class="card-icon">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="#E8E6E1" class="icon-fill">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Twitter / X</div>
+            <div class="card-sub">Thoughts on design &amp; building</div>
+          </div>
+        </div>
+        <svg class="arrow icon-stroke" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8E6E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17L17 7M17 7H7M17 7v10"/>
+        </svg>
+      </a>
+
+
+      <!-- Portfolio -->
+      <a href="https://dribbble.com" target="_blank" rel="noopener noreferrer" class="link-card c3">
+        <div class="card-left">
+          <div class="card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="#E8E6E1" class="icon-fill">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm6.605 4.61a8.502 8.502 0 011.93 5.314c-.281-.054-3.101-.629-5.943-.271-.065-.141-.12-.293-.184-.445a25.424 25.424 0 00-.564-1.236c3.145-1.28 4.577-3.124 4.761-3.362zM12 3.502a8.5 8.5 0 015.34 1.892c-.152.192-1.443 1.941-4.48 3.08-1.399-2.57-2.95-4.675-3.189-5A8.687 8.687 0 0112 3.502zm-3.635.498c.219.276 1.783 2.376 3.195 4.901-4.031 1.071-7.59 1.049-7.969 1.042A8.516 8.516 0 018.365 4zm-4.905 7.498c0-.084.003-.168.006-.252l.28.003c.396.003 4.553.04 8.873-1.219.247.484.479.976.694 1.468-.109.03-.228.067-.347.1-4.465 1.44-6.837 5.372-7.032 5.705a8.493 8.493 0 01-2.474-5.805zm4.87 7.107c.158-.272 2.09-3.547 6.92-5.24 1.252 3.244 1.762 5.966 1.89 6.698a8.516 8.516 0 01-8.81-1.458zm10.253.893c-.08-.494-.533-3.102-1.705-6.303 2.672-.428 5.013.267 5.307.355a8.527 8.527 0 01-3.602 5.948z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Portfolio</div>
+            <div class="card-sub">Design work &amp; projects</div>
+          </div>
+        </div>
+        <svg class="arrow icon-stroke" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8E6E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17L17 7M17 7H7M17 7v10"/>
+        </svg>
+      </a>
+
+      <!-- Email — direct mailto hardcoded -->
+      <a href="mailto:Regboybregy23@gmail.com" class="link-card email-card">
+        <div class="card-left">
+          <div class="card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E8E6E1" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="icon-stroke">
+              <rect x="3" y="5" width="18" height="14" rx="2"/>
+              <path d="M3 7l9 6 9-6"/>
+            </svg>
+          </div>
+          <div>
+            <div class="card-title">Email</div>
+            <div class="card-sub">Regboybregy23@gmail.com</div>
+          </div>
+        </div>
+        <svg class="arrow icon-stroke" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8E6E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 17L17 7M17 7H7M17 7v10"/>
+        </svg>
+      </a>
+
+    </div>
+
+    <p class="footer">MADE WITH ♥ · 2026</p>
+  </div>
+
+  <script>
+    function toggleTheme() {
+      var html  = document.documentElement;
+      var knob  = document.getElementById('knob');
+      var light = html.getAttribute('data-theme') !== 'dark';
+      html.setAttribute('data-theme', light ? 'dark' : 'light');
+      knob.textContent = light ? '🌙' : '☀️';
+    }
+  </script>
+</body>
+</html>
